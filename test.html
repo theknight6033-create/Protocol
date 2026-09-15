@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Optimized for iPad viewport and touch -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shadow Protocol: Combat Simulator</title>
+    
+    <style>
+        :root {
+            /* Extracted Theme Variables */
+            --bg-color: #030303;
+            --surface-color: #0a0a0a;
+            --surface-hover: #141414;
+            --text-primary: #e0e0e0;
+            --text-secondary: #666666;
+            --accent: #d40000;
+            --accent-glow: rgba(212, 0, 0, 0.5);
+            --border: #1f1f1f;
+            --success: #007a00;
+            
+            --sim-primary: #8a0303;
+            --sim-correct: #1b5e20;
+            --sim-incorrect: #8a0303;
+            --sim-skipped: #d4a373;
+            
+            --font-main: 'Consolas', 'Courier New', monospace;
+        }
+
+        /* Added -webkit-tap-highlight-color to remove iPad's default gray tap flash */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            padding: 20px;
+            overflow: hidden;
+            -webkit-user-select: none; /* Prevents text selection on iPad tap */
+        }
+
+        /* --- ANTI-EXTRACTION WATERMARK PROTOCOL --- */
+        body::after {
+            /* Content injected via CSS escapes standard DOM scraping */
+            content: "SURYANSH TIWARI\A THE KNIGHT\A BATCH: MNB1";
+            white-space: pre;
+            position: fixed;
+            bottom: 15px;  /* Locks to the bottom */
+            right: 20px;   /* Locks to the right */
+            font-size: 12px; /* Scaled down for a stealthy look */
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.15); /* Slightly adjusted for small-text visibility */
+            pointer-events: none; /* Clicks pass right through */
+            z-index: 10000;
+            text-align: right; /* Aligns text flush with the right edge */
+            letter-spacing: 2px; /* Tighter letter spacing for small text */
+            line-height: 1.4;
+            user-select: none;
+            -webkit-user-select: none;
+            /* Subdued chromatic aberration */
+            text-shadow: 1px 0px 1px rgba(212, 0, 0, 0.08), -1px 0px 1px rgba(0, 255, 255, 0.08);
+            mix-blend-mode: difference; 
+        }
+
+        /* iPad specific container layout */
+        .sim-dashboard { 
+            display: flex; 
+            gap: 20px; 
+            width: 100%; 
+            height: 100%; 
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            padding: 20px;
+        }
+        
+        .sim-sidebar { 
+            width: 320px; 
+            background-color: #0d0d0d; 
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+            flex-shrink: 0; 
+        }
+        
+        .sim-main-panel { 
+            flex: 1; 
+            background-color: #0d0d0d; 
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+        }
+
+        h3 { text-transform: uppercase; letter-spacing: 2px; font-weight: normal; font-size: 1rem; color: var(--accent); margin-bottom: 15px; }
+
+        .sim-btn { 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            font-weight: bold; 
+            transition: all 0.15s ease-in-out; 
+            text-transform: uppercase; 
+            cursor: pointer;
+            font-family: var(--font-main);
+        }
+        
+        #sim-setup-phase { display: flex; flex-direction: column; justify-content: center; height: 100%; max-width: 500px; margin: 0 auto; width: 100%; }
+        .sim-setup-group { margin-bottom: 25px; }
+        .sim-setup-group label { display: block; margin-bottom: 10px; color: var(--text-secondary); font-size: 14px; text-transform: uppercase;}
+        
+        select, input {
+            width: 100%; background: #000; border: 1px solid var(--border); color: var(--text-primary); 
+            padding: 15px; font-family: var(--font-main); border-radius: 4px; font-size: 16px;
+        }
+        select:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 5px var(--accent-glow); }
+
+        .sim-timer-display { font-size: 42px; text-align: center; color: var(--sim-primary); margin-bottom: 20px; font-weight: bold; letter-spacing: 4px; background: #000; padding: 20px; border: 1px solid var(--border); border-radius: 6px;}
+        
+        #sim-recording-main, #sim-evaluation-input-main, #sim-evaluation-summary-main { display: none; height: 100%; flex-direction: column; }
+        
+        .sim-question-header { font-size: 24px; text-align: center; margin-bottom: 30px; color: var(--text-secondary); }
+        .sim-question-header span { font-size: 80px; color: var(--text-primary); display: block; margin-top: 10px; font-weight: bold;}
+        
+        .sim-option-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 20px; flex: 1; margin-bottom: 25px; }
+        
+        /* Optimized for iPad touch targets */
+        .sim-opt-btn { background-color: #000; color: var(--text-primary); font-size: 48px; border: 2px solid var(--border); }
+        .sim-opt-btn:active { background-color: var(--sim-primary); border-color: var(--sim-primary); color: #fff; transform: scale(0.98); }
+        
+        .sim-skip-btn { width: 100%; padding: 20px; font-size: 22px; background-color: transparent; color: var(--text-secondary); border: 2px dashed var(--border); }
+        .sim-skip-btn:active { border-style: solid; background-color: var(--surface-hover); color: var(--text-primary); }
+        
+        .sim-sidebar-controls { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+        .sim-action-row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        
+        .sim-secondary-btn, .sim-end-btn { background-color: #000; color: var(--text-secondary); padding: 15px; font-size: 14px; }
+        .sim-secondary-btn:active { background-color: var(--surface-hover); color: var(--text-primary); }
+        .sim-end-btn { border-color: var(--sim-incorrect); color: var(--sim-incorrect); }
+        .sim-end-btn:active { background-color: var(--sim-primary); color: white; border-color: var(--sim-primary); }
+        
+        .sim-recorded-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); padding: 15px; background: #000; font-size: 14px; border-radius: 4px;}
+        .sim-recorded-item { padding: 10px 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); display: flex; justify-content: space-between; }
+        .sim-recorded-item:last-child { border-bottom: none; }
+        .sim-recorded-item span { color: var(--text-primary); font-weight: bold; }
+        .sim-recorded-item .skipped-text { color: var(--sim-skipped); }
+        
+        .sim-score-display { font-size: 42px; text-align: center; margin-bottom: 15px; color: var(--text-primary); font-weight: bold;}
+        .sim-projected-display { text-align: center; padding: 15px; background-color: rgba(138, 3, 3, 0.1); border: 1px solid var(--sim-primary); color: var(--sim-primary); margin-bottom: 15px; border-radius: 4px;}
+        .sim-projected-display span { display: block; font-size: 28px; font-weight: bold; margin-top: 5px; }
+        .sim-metrics-display { text-align: center; color: var(--text-secondary); margin-bottom: 15px; font-size: 13px; background: #000; padding: 15px; border: 1px solid var(--border); line-height: 1.8; border-radius: 4px;}
+        
+        .sim-neet-breakdown { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 15px; font-size: 14px; border: 1px solid var(--border); background: #000; padding: 15px; text-align: left; border-radius: 4px;}
+        .sim-neet-row { display: flex; justify-content: space-between; color: var(--text-primary); }
+        
+        #sim-key-input-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding-bottom: 20px; overflow-y: auto; flex: 1; }
+        .sim-key-input-card { background: #000; border: 1px solid var(--border); padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-radius: 4px;}
+        .sim-key-input-card .info { display: flex; flex-direction: column; gap: 4px; }
+        .sim-key-input-card .q-num { font-size: 18px; color: var(--text-primary); font-weight: bold; }
+        .sim-key-input-card .u-choice { font-size: 13px; color: var(--text-secondary); }
+        .sim-key-input-field { width: 60px !important; height: 50px; text-align: center; font-size: 24px !important; padding: 0 !important; background-color: #0d0d0d !important; }
+        
+        #sim-eval-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; padding-bottom: 20px; overflow-y: auto; }
+        .sim-eval-item { background: #000; border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 8px; border-radius: 4px;}
+        .sim-eval-header { color: var(--text-secondary); font-size: 14px; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .sim-eval-details { font-size: 15px; display: flex; justify-content: space-between; }
+        
+        .sim-status-badge { margin-top: 8px; padding: 8px; font-size: 12px; text-align: center; border: 1px solid transparent; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; border-radius: 3px;}
+        .sim-status-correct { border-color: var(--sim-correct); color: #4caf50; background: rgba(27, 94, 32, 0.1); }
+        .sim-status-incorrect { border-color: var(--sim-incorrect); color: #f44336; background: rgba(138, 3, 3, 0.1); }
+        .sim-status-skipped { border-color: var(--sim-skipped); color: var(--sim-skipped); background: rgba(212, 163, 115, 0.1); }
+        
+        .sim-full-width-btn { width: 100%; padding: 18px; margin-top: 15px; background-color: var(--bg-color); color: var(--text-primary); font-size: 16px; cursor: pointer; }
+        .sim-full-width-btn:active { background-color: var(--surface-hover); border-color: var(--accent); }
+        
+        .sim-export-btn { width: 100%; padding: 12px; margin-bottom: 12px; background-color: transparent; color: var(--text-secondary); border: 1px dashed var(--border); font-size: 14px; cursor: pointer; text-transform: uppercase; font-family: var(--font-main);}
+        .sim-export-btn:active { border-style: solid; background-color: var(--surface-hover); color: var(--text-primary); }
+    </style>
+</head>
+<!-- Added ontouchstart="" to unlock iOS Safari active states -->
+<body ontouchstart="">
+
+    <div class="sim-dashboard">
+        <!-- SIMULATOR SIDEBAR -->
+        <aside class="sim-sidebar">
+            <div id="sim-sidebar-setup">
+                <h3>SYSTEM</h3>
+                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; text-align: justify; margin-top: 10px;">
+                    Awaiting module parameters. Initialize tracker to clear terminal and commence session. 
+                </p>
+                <p style="color: var(--sim-primary); font-size: 12px; margin-top: 20px; border-left: 2px solid var(--sim-primary); padding-left: 10px; line-height: 1.5;">
+                    NEET SCORING ACTIVE: <br>+4 Correct | -1 Incorrect | 0 Skipped
+                </p>
+            </div>
+
+            <div class="sim-sidebar-controls" id="sim-sidebar-recording">
+                <div class="sim-timer-display" id="sim-timer-display">00:00</div>
+                <div class="sim-action-row">
+                    <button class="sim-btn sim-secondary-btn" onclick="undoLast()">[ Undo Last Entry ]</button>
+                    <button class="sim-btn sim-end-btn" onclick="endTest()">[ Terminate Test ]</button>
+                </div>
+                <h3 style="margin-bottom: 10px; font-size: 14px; text-align: left;">Audit Log</h3>
+                <div class="sim-recorded-list" id="sim-recorded-list">
+                    <div class="sim-recorded-item" style="justify-content: center;">Awaiting first input...</div>
+                </div>
+            </div>
+
+            <div class="sim-sidebar-controls" id="sim-sidebar-evaluation" style="display: none;">
+                <h3>FINAL METRICS</h3>
+                <div class="sim-score-display"><span id="sim-score">0</span> / <span id="sim-max-marks">0</span></div>
+                <div class="sim-projected-display" id="sim-projected-box">
+                    PROJECTED NEET SCORE
+                    <span id="sim-projected-score">0 / 720</span>
+                </div>
+                <div class="sim-neet-breakdown">
+                    <div class="sim-neet-row" style="color: #4caf50;"><span>Correct (+4)</span> <span id="sim-stat-correct">0</span></div>
+                    <div class="sim-neet-row" style="color: #f44336;"><span>Incorrect (-1)</span> <span id="sim-stat-incorrect">0</span></div>
+                    <div class="sim-neet-row" style="color: var(--sim-skipped);"><span>Skipped (0)</span> <span id="sim-stat-skipped">0</span></div>
+                </div>
+                <div class="sim-metrics-display">
+                    TIME ELAPSED: <strong style="color: var(--text-primary);" id="sim-final-time">00:00</strong><br>
+                    AVERAGE PACE: <strong style="color: var(--text-primary);" id="sim-avg-time">00:00 / Q</strong><br>
+                    ACCURACY: <strong style="color: var(--sim-primary);" id="sim-accuracy-stat">0%</strong>
+                </div>
+                <div id="sim-summary-actions" style="margin-top: auto;">
+                    <button class="sim-export-btn" onclick="downloadReport()">Download .txt Audit</button>
+                    <button class="sim-btn sim-full-width-btn" style="margin-top: 0; padding: 15px; font-size: 14px;" onclick="resetSimApp()">Commence New Module</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- SIMULATOR MAIN PANEL -->
+        <main class="sim-main-panel">
+            <div id="sim-setup-phase">
+                <h3 style="font-size: 1.2rem; margin-bottom: 25px; text-align: center;">Module Parameters</h3>
+                <div class="sim-setup-group">
+                    <label>Timer Protocol</label>
+                    <select id="sim-timer-mode" onchange="toggleCustomTime()">
+                        <option value="stopwatch">Stopwatch (Count Up)</option>
+                        <option value="countdown">Countdown (Strict Time Limit)</option>
+                    </select>
+                </div>
+                <div class="sim-setup-group" id="sim-custom-time-group" style="display: none;">
+                    <label>Duration Limit (Minutes)</label>
+                    <input type="number" id="sim-custom-mins" min="1" value="45">
+                </div>
+                <button class="sim-btn sim-full-width-btn" style="background-color: var(--sim-primary); color: white; border: none; font-size: 18px;" onclick="initModule()">INITIALIZE TRACKER</button>
+            </div>
+
+            <div id="sim-recording-main">
+                <div class="sim-question-header">CURRENT QUESTION<span id="sim-current-q-num">1</span></div>
+                <div class="sim-option-grid">
+                    <button class="sim-btn sim-opt-btn" onclick="recordAnswer(1)">1</button>
+                    <button class="sim-btn sim-opt-btn" onclick="recordAnswer(2)">2</button>
+                    <button class="sim-btn sim-opt-btn" onclick="recordAnswer(3)">3</button>
+                    <button class="sim-btn sim-opt-btn" onclick="recordAnswer(4)">4</button>
+                </div>
+                <button class="sim-btn sim-skip-btn" onclick="recordAnswer('SKIP')">SKIP QUESTION</button>
+            </div>
+
+            <div id="sim-evaluation-input-main">
+                <h3 style="text-align: left; border-bottom: none; font-size: 1.2rem;">Batch Insert Answer Key</h3>
+                <p style="color: var(--text-secondary); font-size: 15px; margin-bottom: 25px;">Type the correct option (1, 2, 3, or 4). System will auto-advance.</p>
+                <div id="sim-key-input-list"></div>
+                <button class="sim-btn sim-full-width-btn" style="background-color: var(--sim-primary); color: white; border: none; font-size: 18px;" onclick="evaluateKeys()">EVALUATE AUDIT</button>
+            </div>
+
+            <div id="sim-evaluation-summary-main">
+                <h3 style="text-align: left; border-bottom: none; font-size: 1.2rem; margin-bottom: 20px;">Post-Session Audit</h3>
+                <div id="sim-eval-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ISOLATED SIMULATOR ENGINE JAVASCRIPT -->
+    <script>
+        let simUserAnswers = [], simScore = 0, simMaxMarks = 0, simCountCorrect = 0, simCountIncorrect = 0, simCountSkipped = 0;
+        let simTimerMode = 'stopwatch', simTotalSeconds = 0, simTimerInterval = null, simTimerRunning = false, simInitialSeconds = 0, simFinalElapsedSeconds = 0;
+
+        function toggleCustomTime() {
+            document.getElementById('sim-custom-time-group').style.display = 
+                (document.getElementById('sim-timer-mode').value === 'countdown') ? 'block' : 'none';
+        }
+
+        function initModule() {
+            simTimerMode = document.getElementById('sim-timer-mode').value;
+            if (simTimerMode === 'countdown') {
+                let mins = parseInt(document.getElementById('sim-custom-mins').value) || 45;
+                simTotalSeconds = mins * 60;
+                simInitialSeconds = simTotalSeconds;
+            } else {
+                simTotalSeconds = 0;
+                simInitialSeconds = 0;
+            }
+            updateSimTimerDisplay();
+            document.getElementById('sim-setup-phase').style.display = 'none';
+            document.getElementById('sim-sidebar-setup').style.display = 'none';
+            document.getElementById('sim-recording-main').style.display = 'flex';
+            document.getElementById('sim-sidebar-recording').style.display = 'flex';
+        }
+
+        function formatSimTime(seconds) {
+            const m = Math.floor(seconds / 60), s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function updateSimTimerDisplay() { 
+            document.getElementById('sim-timer-display').innerText = formatSimTime(simTotalSeconds); 
+        }
+
+        function startSimTimer() {
+            if (simTimerRunning) return;
+            simTimerRunning = true;
+            simTimerInterval = setInterval(() => {
+                if (simTimerMode === 'countdown') {
+                    simTotalSeconds--;
+                    if (simTotalSeconds <= 0) {
+                        simTotalSeconds = 0;
+                        updateSimTimerDisplay();
+                        clearInterval(simTimerInterval);
+                        simTimerRunning = false;
+                        endTest();
+                    }
+                } else simTotalSeconds++;
+                updateSimTimerDisplay();
+            }, 1000);
+        }
+
+        function stopSimTimer() {
+            clearInterval(simTimerInterval);
+            simTimerRunning = false;
+        }
+
+        function recordAnswer(option) {
+            if (!simTimerRunning) startSimTimer();
+            simUserAnswers.push({ qNum: simUserAnswers.length + 1, userOpt: option, correctOpt: null, isCorrect: null });
+            updateRecordingUI();
+        }
+
+        function undoLast() {
+            if (simUserAnswers.length > 0) {
+                simUserAnswers.pop();
+                updateRecordingUI();
+            }
+        }
+
+        function updateRecordingUI() {
+            document.getElementById('sim-current-q-num').innerText = simUserAnswers.length + 1;
+            const listEl = document.getElementById('sim-recorded-list');
+            listEl.innerHTML = '';
+            if (simUserAnswers.length === 0) {
+                listEl.innerHTML = '<div class="sim-recorded-item" style="justify-content: center;">Awaiting first input...</div>';
+                return;
+            }
+            simUserAnswers.forEach(ans => {
+                const item = document.createElement('div');
+                item.className = 'sim-recorded-item';
+                item.innerHTML = ans.userOpt === 'SKIP' ? `Q${ans.qNum} <span class="skipped-text">SKIPPED</span>` : `Q${ans.qNum} <span>OPT ${ans.userOpt}</span>`;
+                listEl.appendChild(item);
+            });
+            listEl.scrollTop = listEl.scrollHeight;
+        }
+
+        function endTest() {
+            if (simUserAnswers.length === 0) return;
+            stopSimTimer();
+            simFinalElapsedSeconds = (simTimerMode === 'stopwatch') ? simTotalSeconds : (simInitialSeconds - simTotalSeconds);
+            document.getElementById('sim-final-time').innerText = formatSimTime(simFinalElapsedSeconds);
+            const avgSecs = simFinalElapsedSeconds / simUserAnswers.length;
+            document.getElementById('sim-avg-time').innerText = `${Math.round(avgSecs)}s / Q`;
+
+            document.getElementById('sim-recording-main').style.display = 'none';
+            document.getElementById('sim-sidebar-recording').style.display = 'none';
+            document.getElementById('sim-sidebar-setup').style.display = 'block'; 
+            document.getElementById('sim-sidebar-setup').innerHTML = `<h3>AUDIT MODE</h3><p style="color: var(--text-secondary); font-size: 14px; margin-top:10px;">Batch input the official test key in the main panel.</p>`;
+            document.getElementById('sim-evaluation-input-main').style.display = 'flex';
+            buildBatchInputForm();
+        }
+
+        function buildBatchInputForm() {
+            const listEl = document.getElementById('sim-key-input-list');
+            listEl.innerHTML = '';
+            simUserAnswers.forEach((ans, index) => {
+                const card = document.createElement('div');
+                card.className = 'sim-key-input-card';
+                const choiceText = ans.userOpt === 'SKIP' ? 'SKIPPED' : `Choice: ${ans.userOpt}`;
+                card.innerHTML = `
+                    <div class="info"><span class="q-num">Q${ans.qNum}</span><span class="u-choice">${choiceText}</span></div>
+                    <input type="text" inputmode="numeric" maxlength="1" class="sim-key-input-field" id="sim-key-input-${index}" placeholder="-" oninput="handleKeyInput(${index}, this)">
+                `;
+                listEl.appendChild(card);
+            });
+            setTimeout(() => document.getElementById('sim-key-input-0').focus(), 100);
+        }
+
+        function handleKeyInput(index, element) {
+            element.value = element.value.replace(/[^1-4]/g, '');
+            if (element.value.length === 1 && index < simUserAnswers.length - 1) {
+                document.getElementById(`sim-key-input-${index + 1}`).focus();
+            }
+        }
+
+        function evaluateKeys() {
+            for (let i = 0; i < simUserAnswers.length; i++) {
+                if (!document.getElementById(`sim-key-input-${i}`).value) {
+                    alert("Incomplete Audit: Please enter valid key values (1-4) for every question.");
+                    return;
+                }
+            }
+            simScore = 0; simCountCorrect = 0; simCountIncorrect = 0; simCountSkipped = 0;
+            simMaxMarks = simUserAnswers.length * 4;
+            
+            simUserAnswers.forEach((ans, index) => {
+                const correctOpt = parseInt(document.getElementById(`sim-key-input-${index}`).value);
+                ans.correctOpt = correctOpt;
+                if (ans.userOpt === 'SKIP') {
+                    simCountSkipped++;
+                } else if (ans.userOpt === correctOpt) {
+                    ans.isCorrect = true;
+                    simCountCorrect++;
+                    simScore += 4;
+                } else {
+                    ans.isCorrect = false;
+                    simCountIncorrect++;
+                    simScore -= 1;
+                }
+            });
+
+            document.getElementById('sim-score').innerText = simScore;
+            document.getElementById('sim-max-marks').innerText = simMaxMarks;
+            document.getElementById('sim-stat-correct').innerText = simCountCorrect;
+            document.getElementById('sim-stat-incorrect').innerText = simCountIncorrect;
+            document.getElementById('sim-stat-skipped').innerText = simCountSkipped;
+
+            const attempted = simCountCorrect + simCountIncorrect;
+            const accuracy = attempted > 0 ? ((simCountCorrect / attempted) * 100).toFixed(1) : 0;
+            document.getElementById('sim-accuracy-stat').innerText = `${accuracy}%`;
+
+            const projectedRatio = simMaxMarks > 0 ? (simScore / simMaxMarks) : 0;
+            const projectedScore = Math.max(0, Math.round(projectedRatio * 720));
+            document.getElementById('sim-projected-score').innerText = `${projectedScore} / 720`;
+
+            document.getElementById('sim-evaluation-input-main').style.display = 'none';
+            document.getElementById('sim-sidebar-setup').style.display = 'none';
+            document.getElementById('sim-sidebar-evaluation').style.display = 'flex';
+            document.getElementById('sim-evaluation-summary-main').style.display = 'flex';
+            buildEvaluationSummary();
+        }
+
+        function buildEvaluationSummary() {
+            const listEl = document.getElementById('sim-eval-list');
+            listEl.innerHTML = '';
+            simUserAnswers.forEach((ans) => {
+                const evalItem = document.createElement('div');
+                evalItem.className = 'sim-eval-item';
+                let statusHtml = '', borderColor = '';
+                if (ans.userOpt === 'SKIP') {
+                    statusHtml = `<div class="sim-status-badge sim-status-skipped">SKIPPED (0)</div>`;
+                    borderColor = 'var(--sim-skipped)';
+                } else if (ans.isCorrect) {
+                    statusHtml = `<div class="sim-status-badge sim-status-correct">CORRECT (+4)</div>`;
+                    borderColor = 'var(--sim-correct)';
+                } else {
+                    statusHtml = `<div class="sim-status-badge sim-status-incorrect">INCORRECT (-1)</div>`;
+                    borderColor = 'var(--sim-incorrect)';
+                }
+                evalItem.style.borderColor = borderColor;
+                evalItem.innerHTML = `
+                    <div class="sim-eval-header"><span>Q${ans.qNum}</span></div>
+                    <div class="sim-eval-details"><span style="color:var(--text-secondary)">Selected:</span> <strong>${ans.userOpt}</strong></div>
+                    <div class="sim-eval-details"><span style="color:var(--text-secondary)">Key:</span> <strong>${ans.correctOpt}</strong></div>
+                    ${statusHtml}
+                `;
+                listEl.appendChild(evalItem);
+            });
+        }
+
+        function resetSimApp() {
+            simUserAnswers = []; simScore = 0; simCountCorrect = 0; simCountIncorrect = 0; simCountSkipped = 0;
+            simTimerRunning = false;
+            clearInterval(simTimerInterval);
+            updateRecordingUI();
+            document.getElementById('sim-evaluation-summary-main').style.display = 'none';
+            document.getElementById('sim-sidebar-evaluation').style.display = 'none';
+            document.getElementById('sim-setup-phase').style.display = 'flex';
+            document.getElementById('sim-sidebar-setup').style.display = 'block';
+            document.getElementById('sim-sidebar-setup').innerHTML = `
+                <h3>SYSTEM</h3>
+                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; text-align: justify; margin-top: 10px;">
+                    Awaiting module parameters. Initialize tracker to clear terminal and commence session. 
+                </p>
+                <p style="color: var(--sim-primary); font-size: 12px; margin-top: 20px; border-left: 2px solid var(--sim-primary); padding-left: 10px; line-height: 1.5;">
+                    NEET SCORING ACTIVE: <br>+4 Correct | -1 Incorrect | 0 Skipped
+                </p>
+            `;
+        }
+
+        function downloadReport() {
+            let report = `=========================================\n`;
+            report += `    SHADOW COMBAT PRACTICE AUDIT\n`;
+            report += `=========================================\n\n`;
+            report += `Date: ${new Date().toLocaleString()}\n`;
+            report += `Score: ${simScore} / ${simMaxMarks}\n\n`;
+            simUserAnswers.forEach(ans => {
+                report += `Q${ans.qNum} | Selected: ${ans.userOpt} | Key: ${ans.correctOpt}\n`;
+            });
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Combat_Audit_${Date.now()}.txt`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
